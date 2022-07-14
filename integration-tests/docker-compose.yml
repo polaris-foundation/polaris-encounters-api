@@ -1,0 +1,180 @@
+x-healthcheck:
+  &FLASK_HEALTHCHECK
+  healthcheck:
+    test: curl -f http://localhost:5000/running || false
+    interval: 3s
+    retries: 40
+    start_period: 10s
+
+x-environment:
+  &COMMON_ENVIRONMENT
+  ENVIRONMENT: DEVELOPMENT
+  ALLOW_DROP_DATA: "true"
+  PROXY_URL: http://localhost
+  HS_ISSUER: http://localhost/
+  HS_KEY: secret
+  AUTH0_AUDIENCE: http://localhost/
+  AUTH0_CLIENT_ID: dummy
+  REDIS_HOST: localhost
+  REDIS_PORT: 6379
+  REDIS_PASSWORD: doesntmatter
+  REDIS_INSTALLED: "false"
+  LOG_LEVEL: DEBUG
+  LOG_FORMAT: COLOUR
+  DATABASE_HOST: postgres-db
+  DATABASE_PORT: 5432
+  DATABASE_USER: postgres-user
+  DATABASE_PASSWORD: postgres-password
+  RABBITMQ_HOST: rabbitmq
+  RABBITMQ_USERNAME: guest
+  RABBITMQ_PASSWORD: guest
+
+services:
+  dhos-encounters-integration-tests:
+    container_name: "dhos-encounters-integration-tests"
+    build:
+      context: .
+      args:
+        - PIP_EXTRA_INDEX_URL
+    environment:
+      <<: *COMMON_ENVIRONMENT
+      SYSTEM_JWT_SCOPE: >-
+        read:send_encounter write:send_encounter
+        read:gdm_encounter write:gdm_encounter
+        write:gdm_patient write:gdm_patient_all write:send_patient
+        write:send_location write:gdm_location
+      BEHAVE_ARGS: ${BEHAVE_ARGS:-}
+      REPORT_PORTAL_URL: ${REPORT_PORTAL_URL:-}
+      REPORT_PORTAL_TOKEN: ${REPORT_PORTAL_TOKEN:-}
+      REPORT_PORTAL_PROJECT: ${REPORT_PORTAL_PROJECT:-}
+      ENVIRONMENT: ${ENVIRONMENT:-}
+      RELEASE: ${RELEASE:-}
+    command: >
+      bash -c "behave --no-capture --no-logcapture ${BEHAVE_ARGS:-}"
+    depends_on:
+      "dhos-encounters-api":
+        condition: service_healthy
+
+  dhos-encounters-api:
+    container_name: "dhos-encounters-api"
+    build:
+      context: ../
+      args:
+        - GEMFURY_DOWNLOAD_KEY
+    environment:
+      <<: *COMMON_ENVIRONMENT
+      DATABASE_NAME: dhos-encounters-api
+    command: >
+      bash -c "flask db upgrade && python -m dhos_encounters_api"
+    <<: *FLASK_HEALTHCHECK
+    depends_on:
+      "postgres-db":
+        condition: service_healthy
+      "rabbitmq":
+        condition: service_healthy
+      "dhos-services-api":
+        condition: service_healthy
+      "dhos-locations-api":
+        condition: service_healthy
+      "dhos-users-api":
+        condition: service_healthy
+
+  dhos-services-api:
+    container_name: "dhos-services-api"
+    image: "sensynehealth.azurecr.io/dhos/dhos-services-api:dev"
+    environment:
+      <<: *COMMON_ENVIRONMENT
+      EXTERNAL_URL: http://dhos-services-api:5000
+      CUSTOMER_CODE: DEV
+      DATABASE_NAME: dhos-services-api
+      DISABLE_CREATE_USER_IN_AUTH0: "True"
+      SMTP_HOST: dummy
+      SMTP_AUTH_PASS: dummy
+      SMTP_AUTH_USER: dummy
+      EMAIL_SENDER: dummy
+      GDM_SMS_SENDER: dummy
+      GDM_LINK_MSG: http://dummy
+      TOKEN_URL: "https://dummy/oauth/token"
+      AUTH0_MGMT_CLIENT_ID: "dummy"
+      AUTH0_MGMT_CLIENT_SECRET: "dummy"
+      AUTH0_AUTHZ_CLIENT_ID: "doesnotmatter"
+      AUTH0_AUTHZ_CLIENT_SECRET: "dummy"
+      AUTH0_AUTHZ_WEBTASK_URL: "dummy"
+      NONCUSTOM_AUTH0_DOMAIN: "https://dummy"
+      AUTH0_CUSTOM_DOMAIN: "dev"
+      AUTH0_HS_KEY: "secret"
+      NEO4J_DB_URL: ""
+      NEO4J_DB_PORT: 7687
+      DHOS_LOCATIONS_API: "http://dhos-locations-api:5000"
+      DHOS_USERS_API_HOST: "http://dhos-users-api:5000"
+    command: >
+      bash -c "flask db upgrade && python -m dhos_services_api"
+    <<: *FLASK_HEALTHCHECK
+    depends_on:
+      "rabbitmq":
+        condition: service_healthy
+      "postgres-db":
+        condition: service_healthy
+
+  dhos-users-api:
+    container_name: "dhos-users-api"
+    image: "sensynehealth.azurecr.io/dhos/dhos-users-api:dev"
+    environment:
+      <<: *COMMON_ENVIRONMENT
+      DATABASE_NAME: dhos-users-api
+      DISABLE_CREATE_USER_IN_AUTH0: "True"
+      CUSTOMER_CODE: "dev"
+      TOKEN_URL: "https://dummy/oauth/token"
+      AUTH0_MGMT_CLIENT_ID: "dummy"
+      AUTH0_MGMT_CLIENT_SECRET: "dummy"
+      AUTH0_AUTHZ_CLIENT_ID: "doesnotmatter"
+      AUTH0_AUTHZ_CLIENT_SECRET: "dummy"
+      AUTH0_AUTHZ_WEBTASK_URL: "dummy"
+      NONCUSTOM_AUTH0_DOMAIN: "https://dummy"
+      AUTH0_CUSTOM_DOMAIN: "dev"
+      AUTH0_HS_KEY: "secret"
+    command: >
+      bash -c "flask db upgrade && python -m dhos_users_api"
+    <<: *FLASK_HEALTHCHECK
+    depends_on:
+      "rabbitmq":
+        condition: service_healthy
+      "postgres-db":
+        condition: service_healthy
+
+  dhos-locations-api:
+    container_name: "dhos-locations-api"
+    image: sensynehealth.azurecr.io/dhos/dhos-locations-api:dev
+    environment:
+      <<: *COMMON_ENVIRONMENT
+      DATABASE_NAME: dhos-locations-api
+    command: >
+      bash -c "flask db upgrade && python -m dhos_locations_api"
+    <<: *FLASK_HEALTHCHECK
+    depends_on:
+      "postgres-db":
+        condition: service_healthy
+
+  postgres-db:
+    container_name: "postgres-db"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER}"]
+      interval: 2s
+      timeout: 5s
+      retries: 20
+    build:
+      context: ./postgres-db
+    environment:
+      - POSTGRES_USER=postgres-user
+      - POSTGRES_PASSWORD=postgres-password
+      - POSTGRES_MULTIPLE_DATABASES="dhos-encounters-api", "dhos-locations-api", "dhos-services-api", "dhos-users-api"
+
+  rabbitmq:
+    container_name: "rabbitmq"
+    image: docker.io/rabbitmq:3.8-management-alpine
+    healthcheck:
+      test: rabbitmq-diagnostics -q check_running && rabbitmq-diagnostics -q check_local_alarms
+      interval: 5s
+      timeout: 5s
+      retries: 10
+      start_period: 60s

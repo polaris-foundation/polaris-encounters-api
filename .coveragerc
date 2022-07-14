@@ -1,0 +1,18 @@
+[paths]
+source =
+    dhos_encounters_api/*
+
+[report]
+
+;exclude_lines =
+
+omit =
+    **/__main__.py
+    dhos_encounters_api/autoapp.py
+    dhos_encounters_api/app.py
+    dhos_encounters_api/blueprint_development/*
+
+fail_under = 90
+
+show_missing = true
+skip_covered = true

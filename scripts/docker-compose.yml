@@ -1,0 +1,26 @@
+version: "3.7"
+
+networks:
+  dhos-encounters-test:
+
+services:
+  dhos-encounters-db:
+    container_name: "dhos-encounters-db"
+    image: docker.io/postgres:12-alpine
+    networks:
+      - dhos-encounters-test
+    ports:
+      - "15432:5432"
+    environment:
+      POSTGRES_USER: dhos-encounters
+      POSTGRES_PASSWORD: dhos-encounters
+      POSTGRES_DB: dhos-encounters-db
+
+  start_dependencies:
+    container_name: "dhos-encounters-dependencies"
+    image: dadarek/wait-for-dependencies
+    depends_on:
+      - dhos-encounters-db
+    networks:
+      - dhos-encounters-test
+    command: dhos-encounters-db:5432

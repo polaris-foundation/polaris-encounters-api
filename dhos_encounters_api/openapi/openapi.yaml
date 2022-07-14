@@ -1,0 +1,1104 @@
+openapi: 3.0.3
+info:
+  description: A service for storing and retrieving patient encounters (hospital stays).
+  title: DHOS Encounters API
+  version: 1.0.0
+paths:
+  /running:
+    get:
+      summary: Verify service is running
+      description: Verifies that the service is running. Used for monitoring in kubernetes.
+      tags:
+      - monitoring
+      responses:
+        '200':
+          description: If we respond, we are running
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  running:
+                    type: boolean
+                    example: true
+      operationId: flask_batteries_included.blueprint_monitoring.app_running
+  /version:
+    get:
+      summary: Get version information
+      description: Get the version number, circleci build number, and git hash.
+      tags:
+      - monitoring
+      responses:
+        '200':
+          description: Version numbers
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  circle:
+                    type: string
+                    example: '1234'
+                  hash:
+                    type: string
+                    example: 366c204
+      operationId: flask_batteries_included.blueprint_monitoring.app_version
+  /dhos/v2/encounter:
+    post:
+      summary: Create an encounter
+      description: Create a new encounter with the details in the request body.
+      tags:
+      - encounter
+      requestBody:
+        description: An encounter
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/EncounterRequestV2'
+              x-body-name: encounter_data
+      responses:
+        '200':
+          description: New encounter
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EncounterResponse'
+        default:
+          description: Error, e.g. 400 Bad Request, 503 Service Unavailable
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+      operationId: dhos_encounters_api.blueprint_api.create_encounter
+      security:
+      - bearerAuth: []
+    get:
+      summary: Get encounters by filter
+      description: Get encounters matching a patient UUID or EPR encounter ID
+      tags:
+      - encounter
+      parameters:
+      - name: patient_id
+        in: query
+        required: false
+        description: The patient UUID (at least one of patient_id and epr_encounter_id
+          must be present)
+        schema:
+          type: string
+          example: 2126393f-c86b-4bf2-9f68-42bb03a7b68a
+      - name: epr_encounter_id
+        in: query
+        required: false
+        description: The EPR encounter ID (at least one of patient_id and epr_encounter_id
+          must be present)
+        schema:
+          type: string
+          example: 2126393f-c86b-4bf2-9f68-42bb03a7b68a
+      - name: compact
+        in: query
+        required: false
+        description: Whether to make the response compact
+        schema:
+          type: boolean
+          default: false
+      - name: open_as_of
+        in: query
+        required: false
+        description: Include only encounters open as of the ISO8601 datetime provided
+          (patient_id required)
+        schema:
+          type: string
+          example: '2017-09-23T08:29:19.123+00:00'
+      - name: show_deleted
+        in: query
+        required: false
+        description: show deleted data in response
+        schema:
+          type: boolean
+          default: false
+      - name: show_children
+        in: query
+        required: false
+        description: show children data in response
+        schema:
+          type: boolean
+          default: false
+      - name: expanded
+        in: query
+        required: false
+        description: Whether to expand the indentifier
+        schema:
+          type: boolean
+          default: false
+      responses:
+        '200':
+          description: A list of encounters
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/EncounterResponse'
+        default:
+          description: Error, e.g. 404 Not Found, 503 Service Unavailable
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+      operationId: dhos_encounters_api.blueprint_api.get_encounters_by_filters
+      security:
+      - bearerAuth: []
+  /dhos/v1/encounter/{encounter_id}:
+    get:
+      summary: Get encounter by UUID
+      description: Get an encounter by its UUID
+      tags:
+      - encounter
+      parameters:
+      - name: encounter_id
+        in: path
+        required: true
+        description: UUID of the encounter
+        schema:
+          type: string
+          example: 2126393f-c86b-4bf2-9f68-42bb03a7b68a
+      - name: show_deleted
+        in: query
+        required: false
+        description: allow a deleted encounter to be returned
+        schema:
+          type: boolean
+          default: false
+      responses:
+        '200':
+          description: An encounter
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EncounterResponse'
+        default:
+          description: Error, e.g. 404 Not Found, 503 Service Unavailable
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+      operationId: dhos_encounters_api.blueprint_api.get_encounter_by_uuid
+      security:
+      - bearerAuth: []
+    patch:
+      summary: Update an encounter by UUID
+      description: Update an encounter by UUID using the detail provided in the request
+        body.
+      tags:
+      - encounter
+      parameters:
+      - name: encounter_id
+        in: path
+        required: true
+        description: The encounter UUID
+        schema:
+          type: string
+          example: 2126393f-c86b-4bf2-9f68-42bb03a7b68a
+      requestBody:
+        description: JSON body containing what has changed in an encounter
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/EncounterUpdateRequest'
+      responses:
+        '200':
+          description: Updated encounter
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EncounterResponse'
+        default:
+          description: Error, e.g. 400 Bad Request, 503 Service Unavailable
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+      operationId: dhos_encounters_api.blueprint_api.update_encounter
+      security:
+      - bearerAuth: []
+    delete:
+      summary: Delete data from an encounter
+      description: Delete data from an encounter. Only specific fields can be deleted.
+      tags:
+      - encounter
+      parameters:
+      - name: encounter_id
+        in: path
+        required: true
+        description: The encounter UUID
+        schema:
+          type: string
+          example: 2126393f-c86b-4bf2-9f68-42bb03a7b68a
+      requestBody:
+        description: Details to delete in the encounter
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/EncounterRemoveRequest'
+      responses:
+        '200':
+          description: An encounter
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EncounterResponse'
+        default:
+          description: Error, e.g. 400 Bad Request, 503 Service Unavailable
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+      operationId: dhos_encounters_api.blueprint_api.remove_from_encounter
+      security:
+      - bearerAuth: []
+  /dhos/v1/encounter/{encounter_id}/children:
+    get:
+      summary: Get child encounters
+      description: Gets the child encounter UUIDs of the encounter with the provided
+        UUID
+      tags:
+      - encounter
+      parameters:
+      - name: encounter_id
+        in: path
+        required: true
+        description: The encounter UUID
+        schema:
+          type: string
+          example: 2126393f-c86b-4bf2-9f68-42bb03a7b68a
+      - name: show_deleted
+        in: query
+        required: false
+        description: Include deleted child encounters in response
+        schema:
+          type: boolean
+          default: false
+      responses:
+        '200':
+          description: List of child encounter UUIDs
+          content:
+            application/json:
+              schema:
+                x-body-name: child_encounter_uuids
+                type: array
+                items:
+                  description: A list of child encounter UUIDs
+                  type: string
+                  example: 2126393f-c86b-4bf2-9f68-42bb03a7b68a
+        default:
+          description: Error, e.g. 404 Not Found, 503 Service Unavailable
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+      operationId: dhos_encounters_api.blueprint_api.get_child_encounters
+      security:
+      - bearerAuth: []
+  /dhos/v1/score_system_history/{score_system_history_id}:
+    patch:
+      summary: Update score system history by UUID
+      description: Update a score system history by UUID. The score system history
+        contains details of the different score systems used for an encounter over
+        time.
+      tags:
+      - encounter
+      parameters:
+      - name: score_system_history_id
+        in: path
+        required: true
+        description: The score system history UUID
+        schema:
+          type: string
+          example: 2126393f-c86b-4bf2-9f68-42bb03a7b68a
+      requestBody:
+        description: Details to change in the score system history
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                changed_time:
+                  type: string
+                  example: '2017-09-23T08:29:19.123+00:00'
+      responses:
+        '200':
+          description: The score system history of the patient
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ScoreSystemHistoryResponse'
+        default:
+          description: Error, e.g. 400 Bad Request, 503 Service Unavailable
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+      operationId: dhos_encounters_api.blueprint_api.update_score_system_history
+      security:
+      - bearerAuth: []
+  /dhos/v1/encounter/merge:
+    post:
+      summary: Change patient and record for matching encounters.
+      description: Changes the patient uuid and patient record uuid for all encounters
+        that match the given child record uuid. The old values are saved in the encounter
+        merge history along with the message uuid. This endpoint is used when merging
+        patients.
+      tags:
+      - encounter
+      requestBody:
+        description: Details of the encounters to merge
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/EncounterMergeRequest'
+              x-body-name: merge_data
+      responses:
+        '200':
+          description: Merge results
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  total:
+                    type: integer
+                    description: Number of merged child encounters
+                    example: 4
+        default:
+          description: Error, e.g. 400 Bad Request, 503 Service Unavailable
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+      operationId: dhos_encounters_api.blueprint_api.merge_encounters
+      security:
+      - bearerAuth: []
+  /dhos/v2/encounters:
+    get:
+      summary: Get encounters by modified after date
+      description: Get encounters which have been modified after the supplied date
+      tags:
+      - encounter
+      parameters:
+      - name: modified_since
+        in: query
+        required: true
+        description: Get a list of observations sets which have been modified after
+          the specified date and time i.e modified_since=2020-12-30 will include an
+          encounter from 2020-12-30 00:00:00.000001
+        schema:
+          type: string
+          example: '2020-12-30'
+      - name: compact
+        in: query
+        required: false
+        description: Whether to make the response compact
+        schema:
+          type: boolean
+          default: false
+      - name: show_deleted
+        in: query
+        required: false
+        description: show deleted data in response
+        schema:
+          type: boolean
+          default: false
+      - name: show_children
+        in: query
+        required: false
+        description: show children data in response
+        schema:
+          type: boolean
+          default: false
+      - name: expanded
+        in: query
+        required: false
+        description: Whether to expand the indentifier
+        schema:
+          type: boolean
+          default: false
+      responses:
+        '200':
+          description: A list of encounters
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/EncounterResponse'
+        default:
+          description: Error, e.g. 503 Service Unavailable
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+      operationId: dhos_encounters_api.blueprint_api.get_encounters
+      security:
+      - bearerAuth: []
+  /dhos/v2/encounter/latest:
+    get:
+      summary: Get latest encounter by patient UUID
+      description: Get the latest encounter for the patient with the provided UUID
+      tags:
+      - encounter
+      parameters:
+      - name: patient_id
+        in: query
+        required: true
+        description: The patient UUID.
+        schema:
+          type: string
+          example: 2126393f-c86b-4bf2-9f68-42bb03a7b68a
+      - name: open_as_of
+        in: query
+        required: false
+        description: Include only encounters open as of the ISO8601 datetime provided
+        schema:
+          type: string
+          example: '2017-09-23T08:29:19.123+00:00'
+      - name: compact
+        in: query
+        required: false
+        description: Whether to make the response compact
+        schema:
+          type: boolean
+          default: false
+      responses:
+        '200':
+          description: An encounter
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EncounterResponse'
+        default:
+          description: Error, e.g. 404 Not Found, 503 Service Unavailable
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+      operationId: dhos_encounters_api.blueprint_api.get_latest_encounter_by_patient_id
+      security:
+      - bearerAuth: []
+    post:
+      summary: Retrieve latest encounters for a list of patient UUIDs
+      description: Retrieve latest encounters for the list of patient UUIDs provided
+        in the request body
+      tags:
+      - encounter
+      parameters:
+      - name: compact
+        in: query
+        required: false
+        description: Whether to make the response compact
+        schema:
+          type: boolean
+          default: false
+      - name: open_as_of
+        in: query
+        required: false
+        description: Include only encounters open as of the ISO8601 datetime provided
+        schema:
+          type: string
+          example: '2017-09-23T08:29:19.123+00:00'
+      requestBody:
+        description: List of patient UUIDs
+        required: true
+        content:
+          application/json:
+            schema:
+              x-body-name: patient_ids
+              type: array
+              items:
+                description: patient UUID
+                type: string
+                example: 2126393f-c86b-4bf2-9f68-42bb03a7b68a
+      responses:
+        '200':
+          description: A map of patient UUID to latest encounter
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties:
+                  $ref: '#/components/schemas/EncounterResponse'
+        default:
+          description: Error, e.g. 400 Bad Request, 503 Service Unavailable
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+      operationId: dhos_encounters_api.blueprint_api.retrieve_latest_encounters_by_patient_ids
+      security:
+      - bearerAuth: []
+  /dhos/v1/encounter/locations:
+    post:
+      summary: Retrieve open encounters for a list of locations
+      description: Retrieve open encounters for the list of location UUIDs provided
+        in the request body
+      tags:
+      - encounter
+      parameters:
+      - name: open_as_of
+        in: query
+        required: false
+        description: Include only encounters open as of the ISO8601 datetime provided
+        schema:
+          type: string
+          format: date-time
+          example: '2017-09-23T08:29:19.123+00:00'
+      - name: compact
+        in: query
+        required: false
+        description: Whether to make the response compact
+        schema:
+          type: boolean
+          default: false
+      requestBody:
+        description: List of location UUIDs
+        required: true
+        content:
+          application/json:
+            schema:
+              x-body-name: location_ids
+              type: array
+              items:
+                type: string
+                example: 2126393f-c86b-4bf2-9f68-42bb03a7b68a
+                description: location UUID
+      responses:
+        '200':
+          description: A list of encounters
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/EncounterResponse'
+        default:
+          description: Error, e.g. 400 Bad Request, 503 Service Unavailable
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+      operationId: dhos_encounters_api.blueprint_api.retrieve_open_encounters_by_locations
+      security:
+      - bearerAuth: []
+  /dhos/v1/encounter/patients:
+    post:
+      summary: Retrieve open encounters for a list of patients
+      description: Retrieve open encounters for the list of patient UUIDs provided
+        in the request body
+      tags:
+      - encounter
+      parameters:
+      - name: open_as_of
+        in: query
+        required: false
+        description: Include only encounters open as of the ISO8601 datetime provided
+        schema:
+          type: string
+          format: date-time
+          example: '2017-09-23T08:29:19.123+00:00'
+      - name: compact
+        in: query
+        required: false
+        description: Whether to make the response compact
+        schema:
+          type: boolean
+          default: false
+      requestBody:
+        description: List of patient UUIDs
+        required: true
+        content:
+          application/json:
+            schema:
+              x-body-name: patient_ids
+              type: array
+              items:
+                type: string
+                example: 2126393f-c86b-4bf2-9f68-42bb03a7b68a
+                description: patient UUID
+      responses:
+        '200':
+          description: A list of encounters
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/EncounterResponse'
+        default:
+          description: Error, e.g. 400 Bad Request, 503 Service Unavailable
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+      operationId: dhos_encounters_api.blueprint_api.retrieve_encounters_for_patients
+      security:
+      - bearerAuth: []
+  /dhos/v1/encounter/locations/patient_count:
+    post:
+      summary: Retrieve count of patients with open encounters for a list of locations
+      description: Retrieve count of patients for the list of location UUIDs provided
+        in the request body
+      tags:
+      - encounter
+      parameters:
+      - name: open_as_of
+        in: query
+        required: false
+        description: Include only encounters open as of the ISO8601 datetime provided
+        schema:
+          type: string
+          format: date-time
+          example: '2017-09-23T08:29:19.123+00:00'
+      requestBody:
+        description: List of location UUIDs
+        required: true
+        content:
+          application/json:
+            schema:
+              x-body-name: location_ids
+              type: array
+              items:
+                type: string
+                example: 2126393f-c86b-4bf2-9f68-42bb03a7b68a
+                description: location UUID
+      responses:
+        '200':
+          description: A map of location uuid to patient count
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties:
+                  type: integer
+        default:
+          description: Error, e.g. 400 Bad Request, 503 Service Unavailable
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+      operationId: dhos_encounters_api.blueprint_api.retrieve_patient_count_for_locations
+      security:
+      - bearerAuth: []
+components:
+  schemas:
+    Error:
+      type: object
+      properties:
+        code:
+          type: integer
+          description: HTTP response code
+          example: 404
+        message:
+          type: string
+          description: Message attached to response
+          example: Not Found
+      required:
+      - code
+      description: An error response in json format
+    EncounterRequest:
+      type: object
+      properties:
+        encounter_type:
+          type: string
+          nullable: true
+          example: INPATIENT
+        admitted_at:
+          type: string
+          format: date-time
+          example: '2019-01-23T08:31:19.123+00:00'
+        location_uuid:
+          type: string
+          example: 7f03efbe-5828-49dc-a777-7f6952b9cea7
+          description: UUID of the encounter's location
+        patient_record_uuid:
+          type: string
+          example: 47f9a1d6-80f3-4f3d-92f5-4136cd60d2bd
+          description: UUID of the patient record the encounter is associated with
+        dh_product_uuid:
+          type: string
+          example: 144873d2-8eb4-4b89-8d38-7650e6012504
+          description: UUID of the product the encounter is associated with
+        score_system:
+          type: string
+          example: news2
+          description: Early warning score system used by the encounter
+        discharged_at:
+          type: string
+          format: date-time
+          nullable: true
+          example: '2019-01-23T08:31:19.123+00:00'
+        deleted_at:
+          type: string
+          format: date-time
+          nullable: true
+          example: '2019-01-23T08:31:19.123+00:00'
+        epr_encounter_id:
+          type: string
+          nullable: true
+          example: 2017L2387461278
+        child_of_encounter_uuid:
+          type: string
+          nullable: true
+          example: 46f41d57-05de-42b6-9cab-6fbb7c916d82
+          description: UUID of the parent encounter
+        spo2_scale:
+          type: integer
+          nullable: true
+          example: 2
+      required:
+      - admitted_at
+      - dh_product_uuid
+      - location_uuid
+      - patient_record_uuid
+      - score_system
+      title: Encounter request
+    EncounterRemoveRequest:
+      type: object
+      properties:
+        child_of_encounter_uuid:
+          type: string
+          nullable: true
+          example: 46f41d57-05de-42b6-9cab-6fbb7c916d82
+      title: Encounter removal request
+    EncounterRequestV2:
+      type: object
+      properties:
+        encounter_type:
+          type: string
+          nullable: true
+          example: INPATIENT
+        admitted_at:
+          type: string
+          format: date-time
+          example: '2019-01-23T08:31:19.123+00:00'
+        location_uuid:
+          type: string
+          example: 7f03efbe-5828-49dc-a777-7f6952b9cea7
+          description: UUID of the encounter's location
+        patient_record_uuid:
+          type: string
+          example: 47f9a1d6-80f3-4f3d-92f5-4136cd60d2bd
+          description: UUID of the patient record the encounter is associated with
+        dh_product_uuid:
+          type: string
+          example: 144873d2-8eb4-4b89-8d38-7650e6012504
+          description: UUID of the product the encounter is associated with
+        score_system:
+          type: string
+          example: news2
+          description: Early warning score system used by the encounter
+        discharged_at:
+          type: string
+          format: date-time
+          nullable: true
+          example: '2019-01-23T08:31:19.123+00:00'
+        deleted_at:
+          type: string
+          format: date-time
+          nullable: true
+          example: '2019-01-23T08:31:19.123+00:00'
+        epr_encounter_id:
+          type: string
+          nullable: true
+          example: 2017L2387461278
+        child_of_encounter_uuid:
+          type: string
+          nullable: true
+          example: 46f41d57-05de-42b6-9cab-6fbb7c916d82
+          description: UUID of the parent encounter
+        spo2_scale:
+          type: integer
+          nullable: true
+          example: 2
+        patient_uuid:
+          type: string
+          example: 47f9a1d6-80f3-4f3d-92f5-4136cd60d2bd
+          description: UUID of the patient the encounter is associated with
+      required:
+      - admitted_at
+      - dh_product_uuid
+      - location_uuid
+      - patient_record_uuid
+      - patient_uuid
+      - score_system
+      title: Encounter request
+    EncounterResponse:
+      type: object
+      properties:
+        uuid:
+          type: string
+          description: Universally unique identifier for object
+          example: 2c4f1d24-2952-4d4e-b1d1-3637e33cc161
+        created:
+          type: string
+          description: When the object was created
+          example: '2017-09-23T08:29:19.123+00:00'
+        created_by:
+          type: string
+          description: UUID of the user that created the object
+          example: d26570d8-a2c9-4906-9c6a-ea1a98b8b80f
+        modified:
+          type: string
+          description: When the object was modified
+          example: '2017-09-23T08:29:19.123+00:00'
+        modified_by:
+          type: string
+          description: UUID of the user that modified the object
+          example: 2a0e26e5-21b6-463a-92e8-06d7290067d0
+        encounter_type:
+          type: string
+          example: INPATIENT
+        admitted_at:
+          type: string
+          format: date-time
+          example: '2019-01-23T08:31:19.123+00:00'
+        location_uuid:
+          type: string
+          example: 7f03efbe-5828-49dc-a777-7f6952b9cea7
+          description: UUID of the encounter's location
+        patient_uuid:
+          type: string
+          nullable: true
+          example: 47f9a1d6-80f3-4f3d-92f5-4136cd60d2bd
+          description: UUID of the patient the encounter is associated with
+        patient_record_uuid:
+          type: string
+          example: 47f9a1d6-80f3-4f3d-92f5-4136cd60d2bd
+          description: UUID of the patient record the encounter is associated with
+        score_system:
+          type: string
+          nullable: true
+          example: news2
+          description: Early warning score system used by the encounter
+        discharged_at:
+          type: string
+          format: date-time
+          nullable: true
+          example: '2019-01-23T08:31:19.123+00:00'
+        deleted_at:
+          type: string
+          format: date-time
+          nullable: true
+          example: '2019-01-23T08:31:19.123+00:00'
+        epr_encounter_id:
+          type: string
+          nullable: true
+          example: 2017L2387461278
+        child_encounter_uuids:
+          type: array
+          nullable: true
+          items:
+            type: string
+            example: 46f41d57-05de-42b6-9cab-6fbb7c916d82
+            description: UUID of the parent encounter
+        spo2_scale:
+          type: integer
+          nullable: true
+        dh_product:
+          type: array
+          items:
+            type: object
+        score_system_history:
+          type: array
+          items:
+            type: object
+        location_history:
+          type: array
+          items:
+            type: object
+      required:
+      - admitted_at
+      - encounter_type
+      - location_uuid
+      - patient_record_uuid
+      - score_system
+      - uuid
+      title: Encounter response
+      additionalProperties: false
+    EncounterUpdateRequest:
+      type: object
+      properties:
+        encounter_type:
+          type: string
+          example: INPATIENT
+        admitted_at:
+          type: string
+          format: date-time
+          example: '2019-01-23T08:31:19.123+00:00'
+        location_uuid:
+          type: string
+          example: 7f03efbe-5828-49dc-a777-7f6952b9cea7
+          description: UUID of the encounter's location
+        patient_record_uuid:
+          type: string
+          example: 47f9a1d6-80f3-4f3d-92f5-4136cd60d2bd
+          description: UUID of the patient record the encounter is associated with
+        dh_product_uuid:
+          type: string
+          example: 144873d2-8eb4-4b89-8d38-7650e6012504
+          description: UUID of the product the encounter is associated with
+        score_system:
+          type: string
+          example: news2
+          description: Early warning score system used by the encounter
+        discharged_at:
+          type: string
+          format: date-time
+          nullable: true
+          example: '2019-01-23T08:31:19.123+00:00'
+        deleted_at:
+          type: string
+          format: date-time
+          nullable: true
+          example: '2019-01-23T08:31:19.123+00:00'
+        epr_encounter_id:
+          type: string
+          nullable: true
+          example: 2017L2387461278
+        child_of_encounter_uuid:
+          type: string
+          nullable: true
+          example: 46f41d57-05de-42b6-9cab-6fbb7c916d82
+          description: UUID of the parent encounter
+        spo2_scale:
+          type: integer
+          nullable: true
+      title: Encounter update request
+    ScoreSystemHistoryResponse:
+      type: object
+      properties:
+        uuid:
+          type: string
+          example: b5edcd68-6d7a-4767-aac3-b47e7240d574
+        changed_time:
+          type: string
+          example: '2019-01-01T00:00:00.000Z'
+        score_system:
+          type: string
+          example: news2
+        previous_score_system:
+          type: string
+          example: meows
+        spo2_scale:
+          type: integer
+          example: 1
+        previous_spo2_scale:
+          type: integer
+          example: 2
+        changed_by:
+          type: object
+      title: Score system history response
+    SearchEncounterV2:
+      type: object
+      properties:
+        patient_uuid:
+          type: string
+        encounter_uuid:
+          type: string
+          nullable: true
+        admitted_at:
+          type: string
+          format: date-time
+          nullable: true
+        has_clinician_bookmark:
+          type: boolean
+        discharged_at:
+          type: string
+          format: date-time
+          nullable: true
+        discharged:
+          type: boolean
+        ward_uuid:
+          type: string
+          nullable: true
+        hospital_uuid:
+          type: string
+          nullable: true
+      required:
+      - admitted_at
+      - discharged
+      - discharged_at
+      - encounter_uuid
+      - has_clinician_bookmark
+      - patient_uuid
+      title: Patient Encounter detail
+    SearchResultsResponseV2:
+      type: object
+      properties:
+        total:
+          type: integer
+          example: 2
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/SearchEncounterV2'
+      title: Results from a search (encounter only)
+    EncounterMergeRequest:
+      type: object
+      properties:
+        child_record_uuid:
+          type: string
+          example: c62aa4f6-39fd-4df2-8d31-62f1a560ca6e
+          description: The UUID of the child encounter's patient record
+        parent_record_uuid:
+          type: string
+          example: fb830128-2cbb-4086-9873-56e0a58614d3
+          description: The UUID of the parent encounter's patient record
+        parent_patient_uuid:
+          type: string
+          example: fb830128-2cbb-4086-9873-56e0a58614d3
+          description: The UUID of the parent encounter's patient
+        message_uuid:
+          type: string
+          example: ed2ac4d5-10c6-48f5-8f38-6be68dec988c
+          description: The UUID of the message causing the merge
+      required:
+      - child_record_uuid
+      - message_uuid
+      - parent_patient_uuid
+      - parent_record_uuid
+      title: Encounter merge request
+      additionalProperties: true
+  responses:
+    BadRequest:
+      description: Bad or malformed request was received
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+    NotFound:
+      description: The specified resource was not found
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+    Unauthorized:
+      description: Unauthorized
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+    ServiceUnavailable:
+      description: Service or dependent resource not available
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT

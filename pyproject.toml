@@ -1,0 +1,72 @@
+[tool.poetry]
+name = "dhos-encounters-api"
+version = "0.0.1"
+description = "DHOS Encounters API"
+authors = ["Andrew Gill <andrew.gill@sensynehealth.com>"]
+keywords = ["Swagger", "Encounters"]
+repository = "https://github.com/draysontechnologies/dhos-encounters-api"
+
+[[tool.poetry.source]]
+name = "sensynehealth"
+url = "https://pypi.fury.io/sensynehealth/"
+
+[tool.poetry.dependencies]
+python = "^3.9"
+dictdiffer = "0.*"
+draymed = "2.*"
+flask-batteries-included = {version = "3.*", extras = ["pgsql", "apispec"]}
+kombu-batteries-included = "1.*"
+she-logging = "1.*"
+
+[tool.poetry.dev-dependencies]
+bandit = "*"
+black = "*"
+coloredlogs = "*"
+coverage = "*"
+isort = "*"
+mock = "*"
+mypy = "*"
+pytest = "*"
+pytest-dhos = {version = "*", extras=["fbi"]}
+pytest-flask = "*"
+pytest-freezegun = "*"
+pytest-mock = "*"
+requests_mock = "1.8.*"
+sadisplay = "*"
+safety = "*"
+sqlalchemy-stubs = "*"
+tox = "*"
+tox-docker = "*"
+pytest-flask-sqlalchemy = "*"
+types-PyYAML = "*"
+types-python-dateutil = "*"
+types-mock = "*"
+types-requests = "*"
+
+[tool.mypy]
+namespace_packages=true
+ignore_missing_imports=false
+disallow_untyped_defs=true
+
+[[tool.mypy.overrides]]
+module = [
+    "waitress",
+    "flask_env",
+    "marshmallow",
+    "sqlalchemy.*",
+    "connexion",
+    "apispec.*",
+    "apispec_webframeworks.*",
+    "sadisplay",
+    "dictdiffer",
+    "flask_sqlalchemy"
+]
+ignore_missing_imports = true
+
+[tool.isort]
+profile = "black"
+known_third_party = ["_pytest", "alembic", "apispec", "apispec_webframeworks", "behave", "click", "clients", "connexion", "dateutil", "dictdiffer", "draymed", "environs", "faker", "flask", "flask_batteries_included", "flask_sqlalchemy", "helpers", "jose", "kombu", "kombu_batteries_included", "marshmallow", "mock", "pytest", "pytest_mock", "reporting", "reportportal_behave", "requests", "sadisplay", "she_data_generation", "she_logging", "sqlalchemy", "waitress", "yaml"]
+
+[tool.black]
+line-length = 88
+target-version = ["py39"]

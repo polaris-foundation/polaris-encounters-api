@@ -1,14 +1,10 @@
 [tool.poetry]
 name = "dhos-encounters-api"
 version = "0.0.1"
-description = "DHOS Encounters API"
+description = "Polaris Encounters API"
 authors = ["Andrew Gill <andrew.gill@sensynehealth.com>"]
-keywords = ["Swagger", "Encounters"]
-repository = "https://github.com/draysontechnologies/dhos-encounters-api"
-
-[[tool.poetry.source]]
-name = "sensynehealth"
-url = "https://pypi.fury.io/sensynehealth/"
+keywords = ["Swagger", "Encounters", "Polaris"]
+repository = "https://github.com/polaris-foundation/polaris-encounters-api"
 
 [tool.poetry.dependencies]
 python = "^3.9"
@@ -37,7 +33,6 @@ safety = "*"
 sqlalchemy-stubs = "*"
 tox = "*"
 tox-docker = "*"
-pytest-flask-sqlalchemy = "*"
 types-PyYAML = "*"
 types-python-dateutil = "*"
 types-mock = "*"
@@ -65,7 +60,7 @@ ignore_missing_imports = true
 
 [tool.isort]
 profile = "black"
-known_third_party = ["_pytest", "alembic", "apispec", "apispec_webframeworks", "behave", "click", "clients", "connexion", "dateutil", "dictdiffer", "draymed", "environs", "faker", "flask", "flask_batteries_included", "flask_sqlalchemy", "helpers", "jose", "kombu", "kombu_batteries_included", "marshmallow", "mock", "pytest", "pytest_mock", "reporting", "reportportal_behave", "requests", "sadisplay", "she_data_generation", "she_logging", "sqlalchemy", "waitress", "yaml"]
+known_third_party = ["_pytest", "alembic", "apispec", "apispec_webframeworks", "behave", "click", "clients", "connexion", "dateutil", "dictdiffer", "draymed", "environs", "faker", "flask", "flask_batteries_included", "helpers", "jose", "kombu", "kombu_batteries_included", "marshmallow", "mock", "pytest", "pytest_mock", "reporting", "reportportal_behave", "requests", "sadisplay", "she_data_generation", "she_logging", "sqlalchemy", "waitress", "yaml"]
 
 [tool.black]
 line-length = 88

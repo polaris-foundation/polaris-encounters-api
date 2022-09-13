@@ -34,8 +34,6 @@ services:
     container_name: "dhos-encounters-integration-tests"
     build:
       context: .
-      args:
-        - PIP_EXTRA_INDEX_URL
     environment:
       <<: *COMMON_ENVIRONMENT
       SYSTEM_JWT_SCOPE: >-
@@ -59,8 +57,6 @@ services:
     container_name: "dhos-encounters-api"
     build:
       context: ../
-      args:
-        - GEMFURY_DOWNLOAD_KEY
     environment:
       <<: *COMMON_ENVIRONMENT
       DATABASE_NAME: dhos-encounters-api

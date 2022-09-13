@@ -1,3 +1,4 @@
+import uuid
 from typing import Callable, Dict, List
 
 import pytest
@@ -28,7 +29,7 @@ def test_get_open_encounters_for_patients(
 ) -> None:
     encounter_factory(
         location_uuid=location_uuid,
-        epr_encounter_id="thisisanencounterid7",
+        epr_encounter_id=str(uuid.uuid4()),
         encounter_type="INPATIENT",
         admitted_at="2018-01-01T00:00:00.000Z",
         discharged_at="2018-01-01T00:00:00.000Z",
@@ -41,7 +42,7 @@ def test_get_open_encounters_for_patients(
     )
     encounter_factory(
         location_uuid=location_uuid,
-        epr_encounter_id="thisisanencounterid8",
+        epr_encounter_id=str(uuid.uuid4()),
         encounter_type="INPATIENT",
         admitted_at="2018-01-02T00:00:00.000Z",
         discharged_at=None,

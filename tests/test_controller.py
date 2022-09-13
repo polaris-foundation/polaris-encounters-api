@@ -1,5 +1,5 @@
 from datetime import datetime
-from typing import Callable, Dict, List, Optional, Tuple
+from typing import Callable, Dict, Generator, List, Optional, Tuple
 
 import pytest
 from dateutil.parser import parse
@@ -11,6 +11,7 @@ from pytest_mock import MockFixture
 
 import dhos_encounters_api.blueprint_api.controller
 from dhos_encounters_api.blueprint_api import controller, publish
+from dhos_encounters_api.blueprint_development import reset_database
 from dhos_encounters_api.models.api_spec import EncounterResponse
 from dhos_encounters_api.models.encounter import Encounter
 
@@ -20,7 +21,7 @@ class TestController:
     @pytest.fixture
     def open_encounters(
         self, encounter_factory: Callable, dh_product_uuid: str
-    ) -> List[str]:
+    ) -> Generator[List[str], None, None]:
         """Fixture creates multiple open encounters"""
         # patient uuid, encounter uuid, epr id, record, admitted date, discharged, deleted, parent
         data: List[
@@ -88,10 +89,13 @@ class TestController:
                 child_of_encounter_uuid=parent,
             )
 
-        return [
+        yield [
             encounter
             for patient, encounter, epr, record, locn, admitted, discharged, deleted, parent in data
         ]
+
+        # Clear fixtures after test
+        reset_database()
 
     @pytest.mark.parametrize(
         "patient,expected", [("P1", ["E1P1"]), ("P2", ["E4P2", "E1P2"])]

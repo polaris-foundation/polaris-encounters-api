@@ -33,7 +33,6 @@ from flask_batteries_included.sqldb import (
     database_version_test,
     db,
 )
-from flask_sqlalchemy import SQLAlchemy
 from marshmallow import RAISE, Schema
 from mock import Mock
 from pytest_mock import MockFixture
@@ -223,17 +222,6 @@ def session_app() -> Flask:
     return app
 
 
-@pytest.fixture(scope="session")
-def _db(session_app: Flask) -> SQLAlchemy:
-    """
-    Provide the transactional fixtures with access to the database via a Flask-SQLAlchemy
-    database connection.
-    """
-    db = SQLAlchemy(app=session_app)
-
-    return db
-
-
 @pytest.fixture
 def app(mocker: MockFixture, session_app: Flask) -> Flask:
     from flask_batteries_included.helpers.security import _ProtectedRoute
@@ -390,12 +378,13 @@ def mock_bearer_validation(mocker: MockFixture) -> Mock:
 
 
 @pytest.fixture
-def encounter_factory(db_session: Any) -> Callable:
+def encounter_factory() -> Callable:
     from dhos_encounters_api.models.encounter import Encounter
 
     def factory(*args: Any, **kw: Any) -> Encounter:
         e = Encounter.new(*args, **kw)
-        db_session.commit()
+        db.session.add(e)
+        db.session.commit()
         return e
 
     return factory

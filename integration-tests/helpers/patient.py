@@ -1,10 +1,37 @@
-from typing import Dict
+import random
+import string
+from typing import Dict, List
 
 from behave.runner import Context
 from faker import Faker
-from she_data_generation.patient import nhs_number as generate_nhs_number
 
 fake = Faker()
+
+
+def random_string(length: int, letters: bool = True, digits: bool = True) -> str:
+    choices: str = ""
+    if letters:
+        choices += string.ascii_letters
+    if digits:
+        choices += string.digits
+    return "".join(random.choice(choices) for _ in range(length))
+
+
+def nhs_number() -> str:
+    """
+    An NHS number must be 10 digits, where the last digit is a check digit using the modulo 11 algorithm
+    (see https://datadictionary.nhs.uk/attributes/nhs_number.html).
+    """
+    first_nine: str = random_string(length=9, letters=False, digits=True)
+    digits: List[int] = list(map(int, list(first_nine)))
+    total = sum((10 - i) * digit for i, digit in enumerate(digits))
+    check_digit = 11 - (total % 11)
+    if check_digit == 10:
+        # Invalid - try again
+        return nhs_number()
+    if check_digit == 11:
+        check_digit = 0
+    return first_nine + str(check_digit)
 
 
 def minimal_patient_data(context: Context) -> Dict:
@@ -15,7 +42,7 @@ def minimal_patient_data(context: Context) -> Dict:
         "last_name": fake.last_name(),
         "phone_number": "07123456789",
         "dob": "1970-01-01",
-        "nhs_number": generate_nhs_number(),
+        "nhs_number": nhs_number(),
         "hospital_number": str(fake.random_number(digits=10, fix_len=True)),
         "email_address": "bburrell@example.com",
         "dh_products": [

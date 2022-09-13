@@ -77,7 +77,7 @@ services:
 
   dhos-services-api:
     container_name: "dhos-services-api"
-    image: ghcr.io/polaris-foundation/polaris-services-api:dev
+    image: ghcr.io/polaris-foundation/polaris-services-api:latest
     environment:
       <<: *COMMON_ENVIRONMENT
       EXTERNAL_URL: http://dhos-services-api:5000
@@ -114,7 +114,7 @@ services:
 
   dhos-users-api:
     container_name: "dhos-users-api"
-    image: ghcr.io/polaris-foundation/polaris-users-api:dev
+    image: ghcr.io/polaris-foundation/polaris-users-api:latest
     environment:
       <<: *COMMON_ENVIRONMENT
       DATABASE_NAME: dhos-users-api
@@ -140,7 +140,7 @@ services:
 
   dhos-locations-api:
     container_name: "dhos-locations-api"
-    image: ghcr.io/polaris-foundation/polaris-locations-api:dev
+    image: ghcr.io/polaris-foundation/polaris-locations-api:latest
     environment:
       <<: *COMMON_ENVIRONMENT
       DATABASE_NAME: dhos-locations-api

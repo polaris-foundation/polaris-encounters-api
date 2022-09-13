@@ -60,7 +60,7 @@ ignore_missing_imports = true
 
 [tool.isort]
 profile = "black"
-known_third_party = ["_pytest", "alembic", "apispec", "apispec_webframeworks", "behave", "click", "clients", "connexion", "dateutil", "dictdiffer", "draymed", "environs", "faker", "flask", "flask_batteries_included", "helpers", "jose", "kombu", "kombu_batteries_included", "marshmallow", "mock", "pytest", "pytest_mock", "reporting", "reportportal_behave", "requests", "sadisplay", "she_data_generation", "she_logging", "sqlalchemy", "waitress", "yaml"]
+known_third_party = ["_pytest", "alembic", "apispec", "apispec_webframeworks", "behave", "click", "clients", "connexion", "dateutil", "dictdiffer", "draymed", "environs", "faker", "flask", "flask_batteries_included", "helpers", "jose", "kombu", "kombu_batteries_included", "marshmallow", "mock", "pytest", "pytest_mock", "reporting", "reportportal_behave", "requests", "sadisplay", "she_logging", "sqlalchemy", "waitress", "yaml"]
 
 [tool.black]
 line-length = 88
